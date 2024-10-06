@@ -1,0 +1,6 @@
+holidays
+PyQt5
+pandas
+numpy
+openpyxl
+streamlit
