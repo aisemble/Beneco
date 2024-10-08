@@ -10,39 +10,51 @@ if not os.path.exists('temp'):
 
 st.title("Payroll Automation Tool")
 
-# File uploads
-timesheet_file = st.file_uploader("Upload Timesheet Excel", type=["xlsx"])
-schedule_file = st.file_uploader("Upload Schedule Excel", type=["xlsx"])
+# Multi-file uploads for timesheet and schedule
+timesheet_files = st.file_uploader("Upload Timesheet Excel Files", type=["xlsx"], accept_multiple_files=True)
+schedule_files = st.file_uploader("Upload Schedule Excel Files", type=["xlsx"], accept_multiple_files=True)
 payrate_file = st.file_uploader("Upload Payrate Excel", type=["xlsx"])
 public_holidays_file = st.file_uploader("Upload Public Holidays Excel", type=["xlsx"])
 production_report_file = st.file_uploader("Upload Production Report Excel", type=["xlsx"])
 start_date = st.date_input("Select Start Date")
 
 if st.button("Process Payroll"):
-    if all([timesheet_file, schedule_file, payrate_file, public_holidays_file, production_report_file]):
+    if all([timesheet_files, schedule_files, payrate_file, public_holidays_file, production_report_file]):
         # Save uploaded files
-        timesheet_path = f"temp/{timesheet_file.name}"
-        schedule_path = f"temp/{schedule_file.name}"
-        payrate_path = f"temp/{payrate_file.name}"
-        holidays_path = f"temp/{public_holidays_file.name}"
-        production_report_path = f"temp/{production_report_file.name}"
+        timesheet_paths = []
+        schedule_paths = []
+        
+        # Save each uploaded timesheet file temporarily
+        for timesheet in timesheet_files:
+            temp_path = f"temp/{timesheet.name}"
+            with open(temp_path, 'wb') as f:
+                f.write(timesheet.getbuffer())
+            timesheet_paths.append(temp_path)
+        
+        # Save each uploaded schedule file temporarily
+        for schedule in schedule_files:
+            temp_path = f"temp/{schedule.name}"
+            with open(temp_path, 'wb') as f:
+                f.write(schedule.getbuffer())
+            schedule_paths.append(temp_path)
 
-        with open(timesheet_path, 'wb') as f:
-            f.write(timesheet_file.getbuffer())
-        with open(schedule_path, 'wb') as f:
-            f.write(schedule_file.getbuffer())
+        payrate_path = f"temp/{payrate_file.name}"
         with open(payrate_path, 'wb') as f:
             f.write(payrate_file.getbuffer())
+        
+        holidays_path = f"temp/{public_holidays_file.name}"
         with open(holidays_path, 'wb') as f:
             f.write(public_holidays_file.getbuffer())
+        
+        production_report_path = f"temp/{production_report_file.name}"
         with open(production_report_path, 'wb') as f:
             f.write(production_report_file.getbuffer())
 
         # Load data
-        combined_timesheet = load_timesheets('temp/')
-        combined_schedule = load_schedules('temp/')
+        combined_timesheet = load_timesheets(timesheet_paths)
+        combined_schedule = load_schedules(schedule_paths)
         ca_holidays = load_public_holidays(start_date)
-        production_report = load_production_report('temp/')
+        production_report = load_production_report(production_report_path)
         payrate_list = load_payrate_list(payrate_path)
 
         # Process data
