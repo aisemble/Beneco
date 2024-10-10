@@ -42,13 +42,18 @@ if st.button("Process Payroll"):
         with open(payrate_path, 'wb') as f:
             f.write(payrate_file.getbuffer())
         
-        holidays_path = f"temp/{public_holidays_file.name}"
-        with open(holidays_path, 'wb') as f:
-            f.write(public_holidays_file.getbuffer())
+        # Optional files
+        holidays_path = None
+        if public_holidays_file:
+            holidays_path = f"temp/{public_holidays_file.name}"
+            with open(holidays_path, 'wb') as f:
+                f.write(public_holidays_file.getbuffer())
         
-        production_report_path = f"temp/{production_report_file.name}"
-        with open(production_report_path, 'wb') as f:
-            f.write(production_report_file.getbuffer())
+        production_report_path = None
+        if production_report_file:
+            production_report_path = f"temp/{production_report_file.name}"
+            with open(production_report_path, 'wb') as f:
+                f.write(production_report_file.getbuffer())
 
         # Load data
         combined_timesheet = load_timesheets(timesheet_paths)
