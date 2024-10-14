@@ -25,12 +25,10 @@ def read_excel_safe(file_path, usecols):
         print(f"Unexpected error reading {file_path}: {str(e)}")
         return pd.DataFrame()
 
-def load_timesheets(directory):
+def load_timesheets(file_paths):
     all_timesheets = []
 
-    timesheet_files = glob(os.path.join(directory, '*Timesheet*.xlsx'))
-
-    for file in timesheet_files:
+    for file in file_paths:
         if 'Temp' in file:
             df = process_temp_timesheet(file)
         else:
@@ -39,18 +37,12 @@ def load_timesheets(directory):
             all_timesheets.append(df)
 
     combined_timesheet = pd.concat(all_timesheets, ignore_index=True) if all_timesheets else pd.DataFrame()
-
     return combined_timesheet
 
-def load_schedules(directory):
+def load_schedules(file_paths):
     all_schedules = []
-    # Use a list comprehension to get both types of files
-    schedule_files = [
-        file for pattern in ['*Schedule-Export*.xlsx', '*Shift*.xlsx']
-        for file in glob(os.path.join(directory, pattern))
-    ]
     
-    for file in schedule_files:
+    for file in file_paths:
         print(f"Processing schedule file: {file}")  # For debugging
         df = process_schedule(file)
         if not df.empty:
