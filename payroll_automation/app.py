@@ -14,8 +14,8 @@ st.title("Payroll Automation Tool")
 timesheet_files = st.file_uploader("Upload Timesheet Excel Files", type=["xlsx"], accept_multiple_files=True)
 schedule_files = st.file_uploader("Upload Schedule Excel Files", type=["xlsx"], accept_multiple_files=True)
 payrate_file = st.file_uploader("Upload Payrate Excel", type=["xlsx"])
-public_holidays_file = st.file_uploader("Upload Public Holidays Excel", type=["xlsx"])
-production_report_file = st.file_uploader("Upload Production Report Excel", type=["xlsx"])
+public_holidays_file = st.file_uploader("Upload Public Holidays Excel", type=["xlsx"], help="Optional"))
+production_report_file = st.file_uploader("Upload Production Report Excel", type=["xlsx"], help="Optional"))
 start_date = st.date_input("Select Start Date")
 
 if st.button("Process Payroll"):
