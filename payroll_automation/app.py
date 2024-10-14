@@ -19,7 +19,7 @@ production_report_file = st.file_uploader("Upload Production Report Excel", type
 start_date = st.date_input("Select Start Date")
 
 if st.button("Process Payroll"):
-     if all([timesheet_files, schedule_files, payrate_file]):
+    if all([timesheet_files, schedule_files, payrate_file]):
         # Save uploaded files
         timesheet_paths = []
         schedule_paths = []
