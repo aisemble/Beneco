@@ -29,18 +29,20 @@ def read_excel_safe(file_path, usecols):
 def load_timesheets(file_paths):
     all_timesheets = []
 
-    for file in file_paths:
-        if 'Temp' in file:
-            df = process_temp_timesheet(file)
+    for file_path in file_paths:
+        # Check the filename to determine how to process the file
+        if 'Temp' in file_path:
+            df = process_temp_timesheet(file_path)
         else:
-            df = process_timesheet(file)
+            df = process_timesheet(file_path)
+
         if not df.empty:
             all_timesheets.append(df)
 
+    # Combine all timesheets into a single DataFrame
     combined_timesheet = pd.concat(all_timesheets, ignore_index=True) if all_timesheets else pd.DataFrame()
 
     return combined_timesheet
-
 
 def load_schedules(file_paths):
     all_schedules = []
