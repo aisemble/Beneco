@@ -3,6 +3,7 @@ from data_loading import load_timesheets, load_schedules, load_public_holidays, 
 from salary_calculation import process_data
 from report_generator import generate_excel_report
 import os
+import pandas as pd
 
 # Directory for storing temp files (optional)
 if not os.path.exists('temp'):
@@ -20,51 +21,23 @@ start_date = st.date_input("Select Start Date")
 
 if st.button("Process Payroll"):
     if all([timesheet_files, schedule_files, payrate_file]):
-        # Save uploaded files
-        timesheet_paths = []
-        schedule_paths = []
-        
-        # Save each uploaded timesheet file temporarily
-        for timesheet in timesheet_files:
-            temp_path = f"temp/{timesheet.name}"
-            with open(temp_path, 'wb') as f:
-                f.write(timesheet.getbuffer())
-            timesheet_paths.append(temp_path)
-        
-        # Save each uploaded schedule file temporarily
-        for schedule in schedule_files:
-            temp_path = f"temp/{schedule.name}"
-            with open(temp_path, 'wb') as f:
-                f.write(schedule.getbuffer())
-            schedule_paths.append(temp_path)
+        # Read uploaded files into dataframes
+        timesheet_dfs = [pd.read_excel(timesheet) for timesheet in timesheet_files]
+        schedule_dfs = [pd.read_excel(schedule) for schedule in schedule_files]
+        payrate_df = pd.read_excel(payrate_file)
 
-        payrate_path = f"temp/{payrate_file.name}"
-        with open(payrate_path, 'wb') as f:
-            f.write(payrate_file.getbuffer())
-        
         # Optional files
-        holidays_path = None
-        if public_holidays_file:
-            holidays_path = f"temp/{public_holidays_file.name}"
-            with open(holidays_path, 'wb') as f:
-                f.write(public_holidays_file.getbuffer())
-        
-        production_report_path = None
-        if production_report_file:
-            production_report_path = f"temp/{production_report_file.name}"
-            with open(production_report_path, 'wb') as f:
-                f.write(production_report_file.getbuffer())
+        holidays_df = pd.read_excel(public_holidays_file) if public_holidays_file else None
+        production_report_df = pd.read_excel(production_report_file) if production_report_file else None
 
-        # Load data
-        combined_timesheet = load_timesheets(timesheet_paths)
-        combined_schedule = load_schedules(schedule_paths)
-        ca_holidays = load_public_holidays(start_date)
-        production_report = load_production_report(production_report_path)
-        payrate_list = load_payrate_list(payrate_path)
+        # Combine dataframes if needed
+        combined_timesheet = pd.concat(timesheet_dfs, ignore_index=True)
+        combined_schedule = pd.concat(schedule_dfs, ignore_index=True)
 
         # Process data
+        # Replace this with your actual processing logic
         salary_info, vacation_info, schedule_changes, schedule_alerts = process_data(
-            combined_timesheet, combined_schedule, ca_holidays, production_report, payrate_list, start_date
+            combined_timesheet, combined_schedule, holidays_df, production_report_df, payrate_df, start_date
         )
 
         # Generate report
