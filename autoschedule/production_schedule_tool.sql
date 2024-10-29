@@ -11,8 +11,6 @@ SELECT
     SUM(CASE WHEN Customer IS NULL or Customer in ('', ' ', '  ') THEN 1 ELSE 0 END) AS MissingCustomer
 FROM VW_QueDGNBDetail;
 GO
--- 24349	2362	264	0
-
 
 -- 1. Delivery Analysis
 -- Rank by Delivery Date and identify urgent and missed deadlines
