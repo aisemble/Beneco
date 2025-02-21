@@ -1,0 +1,52 @@
+---
+config:
+  layout: fixed
+---
+flowchart LR
+ subgraph ERP["ERP Layer"]
+        XY["訊越 ERP System (Quantity)"]
+        QB["QuickBooks Inventory Advanced"]
+  end
+ subgraph Integration["Integration Layer"]
+        API["API Gateway"]
+        ETL["ETL Processing"]
+        CACHE["Redis Cache"]
+        MQ["Message Queue"]
+        SCHEDULER["Task Scheduler"]
+  end
+ subgraph WMS["Warehouse Management"]
+        WCS["Warehouse Control System"]
+        TMS["Task Management System"]
+        IMS["Inventory Management"]
+        OPT["Route Optimization"]
+  end
+ subgraph AGV["AGV Control"]
+        FMS["Fleet Management System"]
+        TRF["Traffic Control"]
+        BAT["Battery Management"]
+        MON["Real-time Monitoring"]
+  end
+ subgraph Hardware["Physical Layer"]
+        AGVs["AGV Units"]
+        SENS["IoT Sensors"]
+        SCAN["Barcode/RFID Scanners"]
+        CHARGE["Charging Stations"]
+  end
+    XY <-- Data Sync --> QB
+    QB <-- API --> API
+    API -- Transform --> ETL
+    ETL -- Cache --> CACHE
+    ETL -- Queue --> MQ
+    MQ -- Tasks --> SCHEDULER
+    SCHEDULER -- Commands --> WCS
+    WCS -- Control --> TMS
+    WCS -- Inventory --> IMS
+    WCS -- Routes --> OPT
+    TMS -- Fleet Tasks --> FMS
+    FMS -- Traffic --> TRF
+    FMS -- Battery --> BAT
+    FMS -- Status --> MON
+    TRF -- Commands --> AGVs
+    BAT -- Status --> CHARGE
+    SENS -- Data --> MON
+    SCAN -- Data --> IMS
