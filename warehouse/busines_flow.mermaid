@@ -1,0 +1,43 @@
+flowchart TB
+ subgraph BusinessCycle["Business Cycle"]
+        SO["Sales Order"]
+        Q["Quotation"]
+        ERP["ERP Entry"]
+        Ship["Shipping"]
+        INV["Inventory Deduction"]
+  end
+ subgraph ProductionCycle["Production Cycle"]
+        ERPT["ERP Ticket"]
+        SO2["Sales Order"]
+        ART["Artwork Approval"]
+        MAT["Order Raw Materials"]
+        PROD["Production"]
+  end
+ subgraph WarehouseAutomation["Warehouse Automation"]
+        WMS["WMS System"]
+        AGV["AGV Control"]
+        SCHED["Daily Scheduler"]
+  end
+ subgraph SystemIntegration["System Integration"]
+        XY["訊越 ERP"]
+        QB["QuickBooks Advanced Inventory"]
+  end
+    Q -- Approved --> SO
+    SO -- Create --> ERP
+    ERP -- Trigger --> Ship
+    Ship -- Update --> INV
+    SO2 -- Generate --> ERPT
+    ERPT -- Submit for --> ART
+    ART -- Approved --> MAT
+    MAT -- Release to --> PROD
+    WMS -- Task Generation --> SCHED
+    SCHED -- Optimized Tasks --> AGV
+    ERP -- Sync --> XY
+    XY -- Inventory Update --> QB
+    QB -- Feed Data --> WMS
+    QB -- Alternative --> WMS
+    PROD -- Finished Goods --> WMS
+    Ship -- Generate Pick Tasks --> WMS
+
+
+
