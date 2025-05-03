@@ -1,0 +1,82 @@
+erDiagram
+    PRODUCTION ||--o{ ORDER : processes
+    ORDER ||--o{ ORDER_ITEM : contains
+    ORDER ||--o{ SCHEDULE : scheduled_for
+    
+    PRODUCTION {
+        int production_id PK
+        string production_line
+        datetime start_time
+        datetime end_time
+        string status
+        string shift_id
+    }
+    
+    ORDER {
+        int order_id PK
+        string customer_id
+        string order_number
+        datetime order_date
+        string priority
+        string status
+    }
+    
+    ORDER_ITEM {
+        int item_id PK
+        int order_id FK
+        string product_code
+        int quantity
+        string specifications
+        string status
+    }
+    
+    SCHEDULE {
+        int schedule_id PK
+        int order_id FK
+        int machine_id FK
+        datetime scheduled_start
+        datetime scheduled_end
+        datetime actual_start
+        datetime actual_end
+        string status
+    }
+    
+    MACHINE {
+        int machine_id PK
+        string machine_code
+        string machine_type
+        string status
+        int efficiency_rating
+    }
+    
+    SCHEDULE ||--o{ MACHINE : assigned_to
+    
+    MES_DATA ||--o{ PRODUCTION : feeds
+    ERP_DATA ||--o{ ORDER : imports
+    QUOTE_SYSTEM ||--o{ ORDER : creates
+    
+    MES_DATA {
+        int mes_id PK
+        int production_id FK
+        int machine_id FK
+        datetime timestamp
+        string sensor_data
+        string status_code
+    }
+    
+    ERP_DATA {
+        int erp_id PK
+        string order_reference
+        string customer_code
+        string product_spec
+        datetime import_timestamp
+    }
+    
+    QUOTE_SYSTEM {
+        int quote_id PK
+        string quote_reference
+        string customer_name
+        string product_details
+        datetime quote_date
+        string status
+    }
