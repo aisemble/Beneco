@@ -1,0 +1,697 @@
+openapi: 3.0.3
+info:
+  title: Manufacturing Integration Middleware API
+  description: |
+    RESTful API for middleware integration between ERP, CAD, QA, and Quotation systems.
+    Enables data synchronization, status updates, and cross-system data retrieval.
+  version: 2.0.0
+  contact:
+    name: IT Integration Team
+    email: integration-support@company.internal
+  license:
+    name: Company Proprietary
+servers:
+  - url: https://api.middleware.company.internal/v2
+    description: Production environment
+  - url: https://api-staging.middleware.company.internal/v2
+    description: Staging environment
+  - url: https://api-dev.middleware.company.internal/v2
+    description: Development environment
+
+security:
+  - OAuth2: []
+  - ApiKeyAuth: []
+
+tags:
+  - name: Jobs
+    description: Operations for manufacturing job management
+  - name: QA
+    description: Quality assurance testing operations
+  - name: Quotations
+    description: Customer quotation operations
+  - name: CAD
+    description: CAD file and specification operations
+  - name: Auth
+    description: Authentication operations
+  - name: System
+    description: System operations and health checks
+
+paths:
+  /auth/token:
+    post:
+      tags:
+        - Auth
+      summary: Obtain OAuth2 access token
+      description: Authenticates user credentials and returns an access token
+      operationId: getAccessToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+                - client_id
+              properties:
+                username:
+                  type: string
+                  example: integration_user
+                password:
+                  type: string
+                  format: password
+                  example: Password123!
+                client_id:
+                  type: string
+                  example: system_erp_connector
+                grant_type:
+                  type: string
+                  enum: [password, client_credentials]
+                  default: password
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  token_type:
+                    type: string
+                    example: Bearer
+                  expires_in:
+                    type: integer
+                    example: 3600
+                  refresh_token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Refresh access token
+      description: Obtains a new access token using a refresh token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+                - client_id
+              properties:
+                refresh_token:
+                  type: string
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                client_id:
+                  type: string
+                  example: system_erp_connector
+                grant_type:
+                  type: string
+                  enum: [refresh_token]
+                  default: refresh_token
+      responses:
+        '200':
+          description: Successful token refresh
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  token_type:
+                    type: string
+                    example: Bearer
+                  expires_in:
+                    type: integer
+                    example: 3600
+                  refresh_token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /jobs:
+    get:
+      tags:
+        - Jobs
+      summary: Get list of manufacturing jobs
+      description: Retrieves a list of manufacturing jobs with filtering options
+      operationId: getJobs
+      parameters:
+        - name: status
+          in: query
+          description: Filter jobs by status code
+          schema:
+            type: string
+            enum: [created, in_progress, on_hold, completed, cancelled]
+        - name: start_date
+          in: query
+          description: Filter jobs by start date (ISO-8601)
+          schema:
+            type: string
+            format: date
+            example: '2024-01-01'
+        - name: end_date
+          in: query
+          description: Filter jobs by end date (ISO-8601)
+          schema:
+            type: string
+            format: date
+            example: '2024-01-31'
+        - name: customer_id
+          in: query
+          description: Filter jobs by customer ID
+          schema:
+            type: integer
+            example: 1234
+        - name: include_qa
+          in: query
+          description: Include QA data in response
+          schema:
+            type: boolean
+            default: false
+        - name: limit
+          in: query
+          description: Maximum number of jobs to return
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 1000
+        - name: offset
+          in: query
+          description: Number of jobs to skip
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    example: 156
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Jobs
+      summary: Create a new manufacturing job
+      description: Creates a new manufacturing job in the system
+      operationId: createJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+      responses:
+        '201':
+          description: Job created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /jobs/{job_id}:
+    get:
+      tags:
+        - Jobs
+      summary: Get job details
+      description: Retrieves detailed information about a specific job
+      operationId: getJob
+      parameters:
+        - name: job_id
+          in: path
+          description: ID of the job to retrieve
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: include_qa
+          in: query
+          description: Include QA data in response
+          schema:
+            type: boolean
+            default: false
+        - name: include_cad
+          in: query
+          description: Include CAD data in response
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - Jobs
+      summary: Update job information
+      description: Updates information for an existing job
+      operationId: updateJob
+      parameters:
+        - name: job_id
+          in: path
+          description: ID of the job to update
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobUpdate'
+      responses:
+        '200':
+          description: Job updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /jobs/{job_id}/status:
+    put:
+      tags:
+        - Jobs
+      summary: Update job status
+      description: Updates the status of an existing job
+      operationId: updateJobStatus
+      parameters:
+        - name: job_id
+          in: path
+          description: ID of the job to update
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [created, in_progress, on_hold, completed, cancelled]
+                  example: in_progress
+                comments:
+                  type: string
+                  example: "Job started by operator JDO"
+                timestamp:
+                  type: string
+                  format: date-time
+                  example: '2024-02-15T14:30:00Z'
+      responses:
+        '200':
+          description: Status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /qa/tests:
+    get:
+      tags:
+        - QA
+      summary: Get QA tests
+      description: Retrieves a list of QA tests with filtering options
+      operationId: getQATests
+      parameters:
+        - name: status
+          in: query
+          description: Filter tests by status
+          schema:
+            type: string
+            enum: [new, in_progress, paused, done, cancelled, failed]
+        - name: start_date
+          in: query
+          description: Filter tests by start date (ISO-8601)
+          schema:
+            type: string
+            format: date
+            example: '2024-01-01'
+        - name: end_date
+          in: query
+          description: Filter tests by end date (ISO-8601)
+          schema:
+            type: string
+            format: date
+            example: '2024-01-31'
+        - name: job_id
+          in: query
+          description: Filter tests by job ID
+          schema:
+            type: integer
+            format: int64
+        - name: limit
+          in: query
+          description: Maximum number of tests to return
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 1000
+        - name: offset
+          in: query
+          description: Number of tests to skip
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    example: 42
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  tests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QATest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - QA
+      summary: Create a new QA test
+      description: Creates a new QA test in the system
+      operationId: createQATest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QATestCreate'
+      responses:
+        '201':
+          description: QA test created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QATest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /qa/tests/{test_id}:
+    get:
+      tags:
+        - QA
+      summary: Get QA test details
+      description: Retrieves detailed information about a specific QA test
+      operationId: getQATest
+      parameters:
+        - name: test_id
+          in: path
+          description: ID of the QA test to retrieve
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QATestDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - QA
+      summary: Update QA test
+      description: Updates information for an existing QA test
+      operationId: updateQATest
+      parameters:
+        - name: test_id
+          in: path
+          description: ID of the QA test to update
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QATestUpdate'
+      responses:
+        '200':
+          description: QA test updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QATest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /qa/tests/{test_id}/status:
+    put:
+      tags:
+        - QA
+      summary: Update QA test status
+      description: Updates the status of an existing QA test
+      operationId: updateQATestStatus
+      parameters:
+        - name: test_id
+          in: path
+          description: ID of the QA test to update
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [new, in_progress, paused, done, cancelled, failed]
+                  example: done
+                comments:
+                  type: string
+                  example: "Test completed with minor issues"
+                timestamp:
+                  type: string
+                  format: date-time
+                  example: '2024-02-15T16:45:00Z'
+      responses:
+        '200':
+          description: Status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QATest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /cad/files:
+    get:
+      tags:
+        - CAD
+      summary: Get CAD files
+      description: Retrieves a list of CAD files with filtering options
+      operationId: getCADFiles
+      parameters:
+        - name: job_id
+          in: query
+          description: Filter files by job ID
+          schema:
+            type: integer
+            format: int64
+        - name: file_type
+          in: query
+          description: Filter files by type
+          schema:
+            type: string
+            enum: [dxf, step, stl, dwg, pdf]
+        - name: limit
+          in: query
+          description: Maximum number of files to return
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 1000
+        - name: offset
+          in: query
+          description: Number of files to skip
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    example: 27
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CADFile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - CAD
+      summary: Upload CAD file
+      description: Uploads
