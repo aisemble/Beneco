@@ -1,0 +1,190 @@
+# ETL Pipeline Configuration
+# Manufacturing Integration Middleware
+# Author: Yihan Jia, Information Technology Analyst
+# Last Updated: March 30, 2025
+# Version: 2.3.1
+
+# Global Settings
+global:
+  environment: production
+  logging:
+    level: INFO
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    handlers:
+      - type: file
+        filename: /var/log/middleware/etl_pipeline.log
+        maxBytes: 10485760  # 10MB
+        backupCount: 10
+      - type: stream
+        stream: stdout
+  monitoring:
+    enabled: true
+    prometheus_endpoint: /metrics
+    statsd:
+      host: metrics.internal
+      port: 8125
+      prefix: middleware.etl
+  error_handling:
+    max_retries: 3
+    retry_interval_seconds: 30
+    backoff_factor: 2
+    dead_letter_queue: failed_etl_jobs
+  performance:
+    batch_size: 1000
+    worker_threads: 8
+    timeout_seconds: 60
+
+# Database Connections
+databases:
+  central_db:
+    type: postgresql
+    host: ${DB_HOST:central-db.internal}
+    port: ${DB_PORT:5432}
+    database: ${DB_NAME:middleware_db}
+    username: ${DB_USER:etl_user}
+    password: ${DB_PASSWORD}
+    pool_size: 20
+    idle_timeout_seconds: 300
+    connect_timeout_seconds: 10
+    schema: public
+    sslmode: require
+  
+  erp_db:
+    type: sqlserver
+    host: ${ERP_DB_HOST:erp-db.internal}
+    port: ${ERP_DB_PORT:1433}
+    database: ${ERP_DB_NAME:erp_production}
+    username: ${ERP_DB_USER:integration_user}
+    password: ${ERP_DB_PASSWORD}
+    pool_size: 10
+    idle_timeout_seconds: 300
+    connect_timeout_seconds: 15
+    schema: dbo
+    encrypt: true
+  
+  mes_db:
+    type: postgresql
+    host: ${MES_DB_HOST:mes-db.internal}
+    port: ${MES_DB_PORT:5432}
+    database: ${MES_DB_NAME:mes_production}
+    username: ${MES_DB_USER:mes_reader}
+    password: ${MES_DB_PASSWORD}
+    pool_size: 10
+    idle_timeout_seconds: 300
+    connect_timeout_seconds: 10
+    schema: public
+    sslmode: require
+  
+  qa_db:
+    type: mysql
+    host: ${QA_DB_HOST:qa-db.internal}
+    port: ${QA_DB_PORT:3306}
+    database: ${QA_DB_NAME:qa_system}
+    username: ${QA_DB_USER:qa_reader}
+    password: ${QA_DB_PASSWORD}
+    pool_size: 10
+    idle_timeout_seconds: 300
+    connect_timeout_seconds: 10
+    charset: utf8mb4
+    collation: utf8mb4_unicode_ci
+
+# API Connections
+apis:
+  erp_api:
+    base_url: ${ERP_API_URL:https://erp-api.internal}
+    auth:
+      type: oauth2
+      client_id: ${ERP_API_CLIENT_ID}
+      client_secret: ${ERP_API_CLIENT_SECRET}
+      token_url: /api/v1/auth/token
+      scope: read write
+    timeout_seconds: 30
+    rate_limit:
+      requests_per_second: 10
+      burst: 20
+  
+  qa_api:
+    base_url: ${QA_API_URL:https://qa-api.internal}
+    auth:
+      type: basic
+      username: ${QA_API_USER}
+      password: ${QA_API_PASSWORD}
+    timeout_seconds: 15
+    rate_limit:
+      requests_per_second: 5
+      burst: 10
+  
+  quote_api:
+    base_url: ${QUOTE_API_URL:https://quote-api.internal}
+    auth:
+      type: api_key
+      header_name: X-API-Key
+      key: ${QUOTE_API_KEY}
+    timeout_seconds: 20
+    rate_limit:
+      requests_per_second: 8
+      burst: 15
+
+# Message Brokers
+message_brokers:
+  kafka:
+    bootstrap_servers: ${KAFKA_SERVERS:kafka-1.internal:9092,kafka-2.internal:9092,kafka-3.internal:9092}
+    security_protocol: SASL_SSL
+    sasl_mechanism: PLAIN
+    sasl_username: ${KAFKA_USERNAME}
+    sasl_password: ${KAFKA_PASSWORD}
+    consumer_group_id: middleware_etl
+    auto_offset_reset: earliest
+    enable_auto_commit: false
+    max_poll_records: 500
+    topics:
+      job_updates: manufacturing.jobs.updates
+      machine_status: manufacturing.machines.status
+      qa_results: manufacturing.qa.results
+      inventory_changes: manufacturing.inventory.changes
+
+# ETL Jobs
+jobs:
+  erp_to_central_jobs:
+    description: "Sync jobs from ERP to central database"
+    schedule: "*/15 * * * *"  # Every 15 minutes
+    source:
+      type: database
+      connection: erp_db
+      query: |
+        SELECT j.job_id, j.customer_id, j.created_dt, j.job_status, 
+               j.priority, j.scheduled_dt, j.completion_dt, j.quantity,
+               j.reject_count, j.notes, j.specifications
+        FROM jobs j
+        WHERE j.last_modified_dt > :last_run_time
+        ORDER BY j.last_modified_dt
+    target:
+      type: database
+      connection: central_db
+      table: jobs
+      key_field: job_id
+      operation: upsert
+    transformations:
+      - type: rename_fields
+        mapping:
+          created_dt: creation_date
+          job_status: status
+      - type: convert_timezone
+        fields:
+          - created_dt
+          - scheduled_dt
+          - completion_dt
+        source_tz: America/New_York
+        target_tz: UTC
+      - type: status_code_mapping
+        field: job_status
+        mapping:
+          10: "created"
+          20: "in_progress"
+          30: "on_hold"
+          40: "completed"
+          50: "cancelled"
+      - type: utf8_encoding
+        fields:
+          - notes
+    monitoring:
