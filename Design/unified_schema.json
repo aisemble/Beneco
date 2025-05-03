@@ -1,0 +1,710 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Unified Manufacturing Data Schema",
+  "description": "Standardized schema mapping between ERP, CAD, QA, and quotation systems",
+  "author": "Yihan Jia, Information Technology Analyst",
+  "version": "2.1.0",
+  "lastUpdated": "2025-03-24",
+  
+  "entityMappings": {
+    "job": {
+      "description": "Manufacturing job/order entity mapping",
+      "primaryKeys": {
+        "erp": "job_id",
+        "mes": "job_number",
+        "qa": "order_number",
+        "quoting": "order_id"
+      },
+      "formatRules": {
+        "erp": "numeric",
+        "mes": "alphanumeric with 'J' prefix",
+        "qa": "alphanumeric with 'JOB-' prefix",
+        "quoting": "numeric"
+      },
+      "fields": [
+        {
+          "name": "identifier",
+          "description": "Unique job identifier",
+          "mappings": {
+            "erp": {
+              "field": "job_id",
+              "dataType": "INT",
+              "required": true,
+              "example": 12345
+            },
+            "mes": {
+              "field": "job_number",
+              "dataType": "VARCHAR(20)",
+              "required": true,
+              "example": "J12345"
+            },
+            "qa": {
+              "field": "order_number",
+              "dataType": "VARCHAR(20)",
+              "required": true,
+              "example": "JOB-12345"
+            },
+            "quoting": {
+              "field": "order_id",
+              "dataType": "INT",
+              "required": true,
+              "example": 12345
+            }
+          },
+          "transformations": {
+            "erp_to_mes": "CONCAT('J', job_id)",
+            "erp_to_qa": "CONCAT('JOB-', job_id)",
+            "mes_to_erp": "SUBSTRING(job_number, 2)",
+            "qa_to_erp": "SUBSTRING(order_number, 5)",
+            "quoting_to_erp": "Direct mapping"
+          }
+        },
+        {
+          "name": "customer",
+          "description": "Customer reference",
+          "mappings": {
+            "erp": {
+              "field": "customer_id",
+              "dataType": "INT",
+              "required": true,
+              "example": 42
+            },
+            "mes": {
+              "field": "customer_id",
+              "dataType": "INT",
+              "required": true,
+              "example": 42
+            },
+            "qa": {
+              "field": "client_code",
+              "dataType": "VARCHAR(10)",
+              "required": true,
+              "example": "ACME"
+            },
+            "quoting": {
+              "field": "client_id",
+              "dataType": "INT",
+              "required": true,
+              "example": 42
+            }
+          },
+          "transformations": {
+            "erp_to_qa": "LOOKUP(customer_id, client_code_mapping_table)",
+            "qa_to_erp": "LOOKUP(client_code, client_code_mapping_table)"
+          }
+        },
+        {
+          "name": "creationDate",
+          "description": "Job creation timestamp",
+          "mappings": {
+            "erp": {
+              "field": "created_dt",
+              "dataType": "TIMESTAMP WITH TIMEZONE",
+              "required": true,
+              "example": "2025-03-15T08:30:00Z"
+            },
+            "mes": {
+              "field": "creation_timestamp",
+              "dataType": "TIMESTAMP",
+              "required": true,
+              "example": "2025-03-15 08:30:00"
+            },
+            "qa": {
+              "field": "creation_date",
+              "dataType": "DATE",
+              "required": true,
+              "example": "2025-03-15"
+            },
+            "quoting": {
+              "field": "created_at",
+              "dataType": "TIMESTAMP",
+              "required": true,
+              "example": "2025-03-15 08:30:00"
+            }
+          },
+          "transformations": {
+            "mes_to_erp": "CONVERT_TO_UTC(creation_timestamp)",
+            "qa_to_erp": "CONVERT_TO_DATETIME(creation_date, '00:00:00')",
+            "erp_to_qa": "EXTRACT_DATE(created_dt)"
+          }
+        },
+        {
+          "name": "status",
+          "description": "Current job status",
+          "mappings": {
+            "erp": {
+              "field": "job_status",
+              "dataType": "INT",
+              "required": true,
+              "example": 20,
+              "validValues": [
+                {"code": 10, "meaning": "Created"},
+                {"code": 20, "meaning": "In Progress"},
+                {"code": 30, "meaning": "On Hold"},
+                {"code": 40, "meaning": "Completed"},
+                {"code": 50, "meaning": "Cancelled"}
+              ]
+            },
+            "mes": {
+              "field": "status",
+              "dataType": "VARCHAR(20)",
+              "required": true,
+              "example": "RUNNING",
+              "validValues": [
+                "SETUP", "RUNNING", "PAUSED", "COMPLETE", "ABORTED"
+              ]
+            },
+            "qa": {
+              "field": "test_status",
+              "dataType": "VARCHAR(20)",
+              "required": true,
+              "example": "IN_PROGRESS",
+              "validValues": [
+                "NEW", "IN_PROGRESS", "PAUSED", "DONE", "CANCELLED", "FAILED"
+              ]
+            },
+            "quoting": {
+              "field": "order_status",
+              "dataType": "VARCHAR(20)",
+              "required": true,
+              "example": "processing",
+              "validValues": [
+                "draft", "pending", "processing", "completed", "cancelled"
+              ]
+            }
+          },
+          "transformations": {
+            "erp_to_mes": {
+              "10": "SETUP",
+              "20": "RUNNING",
+              "30": "PAUSED",
+              "40": "COMPLETE",
+              "50": "ABORTED"
+            },
+            "erp_to_qa": {
+              "10": "NEW",
+              "20": "IN_PROGRESS",
+              "30": "PAUSED",
+              "40": "DONE",
+              "50": "CANCELLED"
+            },
+            "mes_to_erp": {
+              "SETUP": 10,
+              "RUNNING": 20,
+              "PAUSED": 30,
+              "COMPLETE": 40,
+              "ABORTED": 50
+            },
+            "qa_to_erp": {
+              "NEW": 10,
+              "IN_PROGRESS": 20,
+              "PAUSED": 30,
+              "DONE": 40,
+              "CANCELLED": 50,
+              "FAILED": 40
+            },
+            "erp_to_quoting": {
+              "10": "draft",
+              "20": "processing",
+              "30": "pending",
+              "40": "completed",
+              "50": "cancelled"
+            }
+          }
+        },
+        {
+          "name": "priority",
+          "description": "Job priority level",
+          "mappings": {
+            "erp": {
+              "field": "priority",
+              "dataType": "INT",
+              "required": true,
+              "example": 2,
+              "validValues": [1, 2, 3, 4, 5]
+            },
+            "mes": {
+              "field": "priority",
+              "dataType": "INT",
+              "required": true,
+              "example": 2,
+              "validValues": [1, 2, 3, 4, 5]
+            },
+            "qa": {
+              "field": "priority",
+              "dataType": "VARCHAR(10)",
+              "required": true,
+              "example": "HIGH",
+              "validValues": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "MINIMAL"]
+            },
+            "quoting": {
+              "field": "priority_code",
+              "dataType": "CHAR(1)",
+              "required": true,
+              "example": "B",
+              "validValues": ["A", "B", "C", "D", "E"]
+            }
+          },
+          "transformations": {
+            "erp_to_qa": {
+              "1": "CRITICAL",
+              "2": "HIGH",
+              "3": "MEDIUM",
+              "4": "LOW",
+              "5": "MINIMAL"
+            },
+            "qa_to_erp": {
+              "CRITICAL": 1,
+              "HIGH": 2,
+              "MEDIUM": 3,
+              "LOW": 4,
+              "MINIMAL": 5
+            },
+            "erp_to_quoting": {
+              "1": "A",
+              "2": "B",
+              "3": "C",
+              "4": "D",
+              "5": "E"
+            }
+          }
+        },
+        {
+          "name": "quantity",
+          "description": "Job quantity",
+          "mappings": {
+            "erp": {
+              "field": "quantity",
+              "dataType": "INT",
+              "required": true,
+              "example": 5000
+            },
+            "mes": {
+              "field": "target_quantity",
+              "dataType": "INT",
+              "required": true,
+              "example": 5000
+            },
+            "qa": {
+              "field": "batch_size",
+              "dataType": "INT",
+              "required": true,
+              "example": 5000
+            },
+            "quoting": {
+              "field": "quantity",
+              "dataType": "INT",
+              "required": true,
+              "example": 5000
+            }
+          },
+          "transformations": {
+            "direct_mapping": true
+          }
+        },
+        {
+          "name": "productSpecifications",
+          "description": "Product specifications",
+          "mappings": {
+            "erp": {
+              "field": "specifications",
+              "dataType": "JSONB",
+              "required": false,
+              "example": {
+                "width_mm": 210,
+                "height_mm": 297,
+                "material": "80gsm uncoated paper"
+              }
+            },
+            "mes": {
+              "fields": [
+                {"field": "product_width", "dataType": "DECIMAL(10,2)"},
+                {"field": "product_height", "dataType": "DECIMAL(10,2)"},
+                {"field": "material_code", "dataType": "VARCHAR(20)"}
+              ],
+              "required": false,
+              "example": {
+                "product_width": 210.00,
+                "product_height": 297.00,
+                "material_code": "UCP-80"
+              }
+            },
+            "qa": {
+              "field": "product_desc",
+              "dataType": "VARCHAR(255)",
+              "required": false,
+              "example": "A4 Letterhead (210x297mm) 80gsm uncoated"
+            },
+            "cad": {
+              "field": "specifications",
+              "dataType": "JSONB",
+              "required": true,
+              "example": {
+                "width": 210,
+                "height": 297,
+                "depth": 0,
+                "material": "paper",
+                "weight": 80,
+                "finish": "uncoated"
+              }
+            }
+          },
+          "transformations": {
+            "erp_to_mes": "EXTRACT_DIMENSIONS_AND_MATERIAL(specifications)",
+            "mes_to_erp": "COMPOSE_JSON(product_width, product_height, material_code)",
+            "qa_to_erp": "PARSE_DIMENSIONS_FROM_DESC(product_desc)",
+            "cad_to_erp": "TRANSFORM_CAD_SPECS(specifications)"
+          }
+        },
+        {
+          "name": "scheduledDate",
+          "description": "Scheduled production date",
+          "mappings": {
+            "erp": {
+              "field": "scheduled_dt",
+              "dataType": "TIMESTAMP WITH TIMEZONE",
+              "required": false,
+              "example": "2025-03-20T10:00:00Z"
+            },
+            "mes": {
+              "field": "planned_start_time",
+              "dataType": "TIMESTAMP",
+              "required": false,
+              "example": "2025-03-20 10:00:00"
+            },
+            "qa": {
+              "field": "planned_inspection",
+              "dataType": "VARCHAR(50)",
+              "required": false,
+              "example": "Mar 20, 2025 10:00 AM"
+            }
+          },
+          "transformations": {
+            "erp_to_mes": "CONVERT_TO_LOCAL_TZ(scheduled_dt)",
+            "mes_to_erp": "CONVERT_TO_UTC(planned_start_time)",
+            "erp_to_qa": "FORMAT_DATE(scheduled_dt, 'MMM dd, yyyy h:mm a')",
+            "qa_to_erp": "PARSE_DATE(planned_inspection, 'MMM dd, yyyy h:mm a')"
+          }
+        },
+        {
+          "name": "completionDate",
+          "description": "Actual completion date",
+          "mappings": {
+            "erp": {
+              "field": "completion_dt",
+              "dataType": "TIMESTAMP WITH TIMEZONE",
+              "required": false,
+              "example": "2025-03-22T15:30:00Z"
+            },
+            "mes": {
+              "field": "actual_end_time",
+              "dataType": "TIMESTAMP",
+              "required": false,
+              "example": "2025-03-22 15:30:00"
+            },
+            "qa": {
+              "field": "completed_dt",
+              "dataType": "TIMESTAMP",
+              "required": false,
+              "example": "2025-03-22 16:45:00"
+            }
+          },
+          "transformations": {
+            "mes_to_erp": "CONVERT_TO_UTC(actual_end_time)",
+            "qa_to_erp": "CONVERT_TO_UTC(completed_dt)"
+          }
+        },
+        {
+          "name": "rejectedQuantity",
+          "description": "Quantity of rejected items",
+          "mappings": {
+            "erp": {
+              "field": "reject_count",
+              "dataType": "INT",
+              "required": false,
+              "example": 23
+            },
+            "mes": {
+              "field": "defect_quantity",
+              "dataType": "INT",
+              "required": false,
+              "example": 23
+            },
+            "qa": {
+              "field": "failure_count",
+              "dataType": "INT",
+              "required": false,
+              "example": 23
+            }
+          },
+          "transformations": {
+            "direct_mapping": true
+          }
+        },
+        {
+          "name": "notes",
+          "description": "Production notes",
+          "mappings": {
+            "erp": {
+              "field": "notes",
+              "dataType": "VARCHAR",
+              "encoding": "UTF-8",
+              "required": false,
+              "example": "Customer requested rush job. Some paper curl noted."
+            },
+            "mes": {
+              "field": "job_notes",
+              "dataType": "TEXT",
+              "encoding": "UTF-8",
+              "required": false,
+              "example": "Customer requested rush job. Some paper curl noted."
+            },
+            "qa": {
+              "field": "comments",
+              "dataType": "TEXT",
+              "encoding": "Windows-1252",
+              "required": false,
+              "example": "Rush job for Acme Corp. Paper curl observed at 3% humidity."
+            }
+          },
+          "transformations": {
+            "qa_to_erp": "CONVERT_ENCODING(comments, 'Windows-1252', 'UTF-8')",
+            "erp_to_qa": "CONVERT_ENCODING(notes, 'UTF-8', 'Windows-1252')"
+          }
+        }
+      ]
+    },
+    "machine": {
+      "description": "Manufacturing equipment entity mapping",
+      "primaryKeys": {
+        "erp": "equipment_id",
+        "mes": "machine_id"
+      },
+      "fields": [
+        {
+          "name": "identifier",
+          "description": "Machine identifier",
+          "mappings": {
+            "erp": {
+              "field": "equipment_id",
+              "dataType": "INT",
+              "required": true,
+              "example": 101
+            },
+            "mes": {
+              "field": "machine_id",
+              "dataType": "INT",
+              "required": true,
+              "example": 101
+            }
+          },
+          "transformations": {
+            "direct_mapping": true
+          }
+        },
+        {
+          "name": "code",
+          "description": "Machine code",
+          "mappings": {
+            "erp": {
+              "field": "equipment_code",
+              "dataType": "VARCHAR(20)",
+              "required": true,
+              "example": "PRESS-01"
+            },
+            "mes": {
+              "field": "machine_code",
+              "dataType": "VARCHAR(20)",
+              "required": true,
+              "example": "PRESS-01"
+            }
+          },
+          "transformations": {
+            "direct_mapping": true
+          }
+        },
+        {
+          "name": "status",
+          "description": "Current machine status",
+          "mappings": {
+            "erp": {
+              "field": "equipment_status",
+              "dataType": "VARCHAR(20)",
+              "required": true,
+              "example": "OPERATIONAL",
+              "validValues": [
+                "OPERATIONAL", "MAINTENANCE", "BREAKDOWN", "IDLE", "SETUP"
+              ]
+            },
+            "mes": {
+              "field": "status",
+              "dataType": "VARCHAR(20)",
+              "required": true,
+              "example": "RUNNING",
+              "validValues": [
+                "RUNNING", "MAINTENANCE", "DOWN", "IDLE", "SETUP"
+              ]
+            }
+          },
+          "transformations": {
+            "erp_to_mes": {
+              "OPERATIONAL": "RUNNING",
+              "MAINTENANCE": "MAINTENANCE",
+              "BREAKDOWN": "DOWN",
+              "IDLE": "IDLE",
+              "SETUP": "SETUP"
+            },
+            "mes_to_erp": {
+              "RUNNING": "OPERATIONAL",
+              "MAINTENANCE": "MAINTENANCE",
+              "DOWN": "BREAKDOWN",
+              "IDLE": "IDLE",
+              "SETUP": "SETUP"
+            }
+          }
+        }
+      ]
+    },
+    "material": {
+      "description": "Production material entity mapping",
+      "primaryKeys": {
+        "erp": "material_id",
+        "mes": "material_code"
+      },
+      "fields": [
+        {
+          "name": "identifier",
+          "description": "Material identifier",
+          "mappings": {
+            "erp": {
+              "field": "material_id",
+              "dataType": "INT",
+              "required": true,
+              "example": 5001
+            },
+            "mes": {
+              "field": "material_code",
+              "dataType": "VARCHAR(20)",
+              "required": true,
+              "example": "MAT-5001"
+            }
+          },
+          "transformations": {
+            "erp_to_mes": "CONCAT('MAT-', material_id)",
+            "mes_to_erp": "SUBSTRING(material_code, 5)"
+          }
+        },
+        {
+          "name": "description",
+          "description": "Material description",
+          "mappings": {
+            "erp": {
+              "field": "material_desc",
+              "dataType": "VARCHAR(100)",
+              "required": true,
+              "example": "80gsm Uncoated Paper"
+            },
+            "mes": {
+              "field": "description",
+              "dataType": "VARCHAR(100)",
+              "required": true,
+              "example": "80gsm Uncoated Paper"
+            }
+          },
+          "transformations": {
+            "direct_mapping": true
+          }
+        },
+        {
+          "name": "quantity",
+          "description": "Material quantity",
+          "mappings": {
+            "erp": {
+              "field": "quantity_on_hand",
+              "dataType": "INT",
+              "required": true,
+              "example": 50000
+            },
+            "mes": {
+              "field": "available_quantity",
+              "dataType": "INT",
+              "required": true,
+              "example": 50000
+            }
+          },
+          "transformations": {
+            "direct_mapping": true
+          }
+        },
+        {
+          "name": "unit",
+          "description": "Unit of measure",
+          "mappings": {
+            "erp": {
+              "field": "unit_of_measure",
+              "dataType": "VARCHAR(10)",
+              "required": true,
+              "example": "SHEET"
+            },
+            "mes": {
+              "field": "unit",
+              "dataType": "VARCHAR(10)",
+              "required": true,
+              "example": "SHEET"
+            }
+          },
+          "transformations": {
+            "direct_mapping": true
+          }
+        }
+      ]
+    }
+  },
+  
+  "timezoneMappings": {
+    "erp": "UTC",
+    "mes": "America/New_York",
+    "qa": "America/New_York",
+    "quoting": "America/New_York"
+  },
+  
+  "encodingMappings": {
+    "erp": "UTF-8",
+    "mes": "UTF-8",
+    "qa": "Windows-1252",
+    "quoting": "UTF-8",
+    "cad": "UTF-8"
+  },
+  
+  "dataDictionaries": {
+    "material_codes": [
+      {"code": "UCP-80", "description": "80gsm uncoated paper"},
+      {"code": "UCP-100", "description": "100gsm uncoated paper"},
+      {"code": "GLS-130", "description": "130gsm gloss coated paper"},
+      {"code": "MAT-150", "description": "150gsm matte coated paper"},
+      {"code": "CRD-300", "description": "300gsm card stock"},
+      {"code": "CRD-350", "description": "350gsm card stock"}
+    ],
+    "client_codes": [
+      {"erp_id": 42, "qa_code": "ACME", "description": "Acme Corporation"},
+      {"erp_id": 43, "qa_code": "GLB", "description": "Globex Industries"},
+      {"erp_id": 44, "qa_code": "OCT", "description": "Oceanic Airlines"},
+      {"erp_id": 45, "qa_code": "WYN", "description": "Wayne Enterprises"},
+      {"erp_id": 46, "qa_code": "STK", "description": "Stark Industries"}
+    ]
+  },
+  
+  "transformationFunctions": {
+    "CONVERT_TO_UTC": "Convert local timestamp to UTC",
+    "CONVERT_TO_LOCAL_TZ": "Convert UTC timestamp to local timezone",
+    "EXTRACT_DATE": "Extract date portion from timestamp",
+    "EXTRACT_DIMENSIONS_AND_MATERIAL": "Parse dimensions and material from JSON",
+    "COMPOSE_JSON": "Create JSON from individual fields",
+    "PARSE_DIMENSIONS_FROM_DESC": "Extract dimensions from text description",
+    "TRANSFORM_CAD_SPECS": "Convert CAD specifications to ERP format",
+    "FORMAT_DATE": "Format date according to specified pattern",
+    "PARSE_DATE": "Parse date from string using pattern",
+    "CONVERT_ENCODING": "Convert text between character encodings",
+    "LOOKUP": "Lookup value in mapping table"
+  }
+}
